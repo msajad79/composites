@@ -7,7 +7,10 @@ from matplotlib import pyplot as plt
 
 
 class Laminate():
+    ID = 0
     def __init__(self, material:Material, off_axis_angle:float=0.0, thickness=0.125) -> None:
+        self.id = Laminate.ID + 1
+        Laminate.ID += 1
         self.material:Material = material
         self.off_axis_angle = float(off_axis_angle)
 
@@ -97,8 +100,18 @@ class Laminate():
 class Composite():
     def __init__(self, laminates) -> None:
         self.laminates:list[Laminate] = laminates
+        self.Z_laminates = self.calc_Z_laminates()
         self.A = self.calc_A()
         self.D = self.calc_D()
+
+    def calc_Z_laminates(self):
+        Z_laminates = {}
+        z1 = -1.0*self.composite_thikness/2.0
+        for laminate in self.laminates[::-1]:
+            z2 = z1 + laminate.thickness
+            Z_laminates[laminate] = (z1, z2)
+            z1 = z2
+        return Z_laminates
 
     def calc_A(self):
         self.A = np.zeros((3,3))
@@ -111,15 +124,23 @@ class Composite():
     
     def calc_D(self):
         self.D = np.zeros((3,3))
-        z1 = -1.0*self.composite_thikness/2.0
-        for laminate in self.laminates:
-            z2 = z1 + laminate.thickness
+        for laminate in self.laminates[::-1]:
+            z1, z2 = self.Z_laminates[laminate]
             for i in range(3):
                 for j in range(3):
                     self.D[i,j] += laminate.Q[i,j]*(np.power(z2, 3.0) - np.power(z1, 3.0)) / 3.0
-            z1 = z2 
+            #z1 = z2 
         self.d = np.linalg.inv(self.D) 
         return self.D
+    
+    def moment_apply(self, M:np.array):
+        K = self.d.dot(M)
+        strain_info = {}
+        for laminate in self.laminates:
+            z1, z2 = self.Z_laminates[laminate]
+            max_z = max([abs(z1), abs(z2)])
+            strain_info[laminate] = K*max_z
+        return strain_info
 
     def stress2strain(self, stress:np.array, a=None):
         """

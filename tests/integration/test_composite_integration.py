@@ -7,6 +7,21 @@ from materials import datasets, material
 
 class CompositeIntegrationTest(unittest.TestCase):
 
+    ############################## Three-point bend page (208) ############################
+    def test_three_point_bend_composite(self):
+        th = 12.5e-6*4
+        laminates = [
+            Laminate(datasets.CarbonT300_Epoxy5208, off_axis_angle=0, thickness=th),
+            Laminate(datasets.CarbonT300_Epoxy5208, off_axis_angle=90, thickness=th),
+            Laminate(datasets.CarbonT300_Epoxy5208, off_axis_angle=90, thickness=th),
+            Laminate(datasets.CarbonT300_Epoxy5208, off_axis_angle=0, thickness=th),
+        ]
+        composite = Composite(laminates)
+        moment = np.array([250.0,0.0,0.0])
+        print("**********")
+        print(composite.moment_apply(moment))
+
+
     ############################## stress and strain ply #######################3
     def test_symetric_stress_every_laminate(self):
 

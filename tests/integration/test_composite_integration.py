@@ -9,7 +9,13 @@ class CompositeIntegrationTest(unittest.TestCase):
 
     ############################## Three-point bend page (208) ############################
     def test_three_point_bend_composite(self):
-        th = 12.5e-6*4
+        K_correct = [2.34, -.213, 0.0] #TODO: Book 0.212 page(209)
+        strain_0_correct = [2.34e-3,-.213e-3, 0.0] #TODO Book .212 page209
+        stress_0_correct = [425, 4.57, 0.0]# MPa #TODO Book 424 page(209)
+        strain_90_correct = [1.17e-3, -.106e-3, 0.0]
+        stress_90_correct = [11.8, -16.0, 0.0]# MPa #TODO: BOOK 11.7, -15.88 page(210)
+
+        th = 125e-6*4.0
         laminates = [
             Laminate(datasets.CarbonT300_Epoxy5208, off_axis_angle=0, thickness=th),
             Laminate(datasets.CarbonT300_Epoxy5208, off_axis_angle=90, thickness=th),
@@ -17,9 +23,19 @@ class CompositeIntegrationTest(unittest.TestCase):
             Laminate(datasets.CarbonT300_Epoxy5208, off_axis_angle=0, thickness=th),
         ]
         composite = Composite(laminates)
-        moment = np.array([250.0,0.0,0.0])
-        print("**********")
-        print(composite.moment_apply(moment))
+        moment = np.array([250,0.0,0.0])
+        properties = composite.moment_apply(moment)
+
+        for i in range(3):
+            self.assertAlmostEqual(properties["K"][i], K_correct[i], delta=10**Decimal(str(K_correct[i])).as_tuple().exponent)
+        
+        
+
+        for i in range(3):
+            self.assertAlmostEqual(properties["strain"][laminates[0]][i], strain_0_correct[i], delta=10**Decimal(str(strain_0_correct[i])).as_tuple().exponent)
+            self.assertAlmostEqual(properties["stress"][laminates[0]][i]/1e6, stress_0_correct[i], delta=10**Decimal(str(stress_0_correct[i])).as_tuple().exponent)
+            self.assertAlmostEqual(properties["strain"][laminates[1]][i], strain_90_correct[i], delta=10**Decimal(str(strain_90_correct[i])).as_tuple().exponent)
+            self.assertAlmostEqual(properties["stress"][laminates[1]][i]/1e6, stress_90_correct[i], delta=10**Decimal(str(stress_90_correct[i])).as_tuple().exponent)
 
 
     ############################## stress and strain ply #######################3

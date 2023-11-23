@@ -60,6 +60,39 @@ class Laminate():
         stress = Q.dot(strain)
         return stress
 
+    def MAF_Q(self):
+        X = np.array([1.0, self.U2, self.U3])
+        cos2t = np.cos(np.deg2rad(2.0*self.off_axis_angle))
+        cos4t = np.cos(np.deg2rad(4.0*self.off_axis_angle))
+        sin2t = np.sin(np.deg2rad(2.0*self.off_axis_angle))
+        sin4t = np.sin(np.deg2rad(4.0*self.off_axis_angle))
+        Y = np.array([
+            [self.U1, cos2t, cos4t],
+            [self.U1, -cos2t, cos4t],
+            [self.U4, 0.0, -cos4t],
+            [self.U5, 0.0, -cos4t],
+            [0.0, sin2t/2.0, sin4t],
+            [0.0, sin2t/2.0, -sin4t]
+        ])
+        return Y.dot(X)
+
+    
+    @property
+    def U1(self):
+        return 1.0/8.0*(3.0*self.material.C_on[0,0] + 3.0*self.material.C_on[1,1] + 2.0*self.material.C_on[0,1] + 4.0*self.material.C_on[2,2])
+    @property
+    def U2(self):
+        return 1.0/2.0*(self.material.C_on[0,0] - self.material.C_on[1,1] )
+    @property
+    def U3(self):
+        return 1.0/8.0*(self.material.C_on[0,0] + self.material.C_on[1,1] - 2.0*self.material.C_on[0,1] - 4.0*self.material.C_on[2,2])
+    @property
+    def U4(self):
+        return 1.0/8.0*(self.material.C_on[0,0] + self.material.C_on[1,1] + 6.0*self.material.C_on[0,1] - 4.0*self.material.C_on[2,2])
+    @property
+    def U5(self):
+        return 1.0/8.0*(self.material.C_on[0,0] + self.material.C_on[1,1] - 2.0*self.material.C_on[0,1] + 4.0*self.material.C_on[2,2])
+
     @property
     def E1(self):
         return 1/self.S[0,0]
@@ -123,6 +156,10 @@ class Composite():
         return self.A
     
     def calc_D(self):
+        """
+        unit d : (KN.m)^-1
+        unit D : (TPa)^-1
+        """
         self.D = np.zeros((3,3))
         for laminate in self.laminates[::-1]:
             z1, z2 = self.Z_laminates[laminate]
@@ -135,12 +172,18 @@ class Composite():
     
     def moment_apply(self, M:np.array):
         K = self.d.dot(M)
-        strain_info = {}
+        properties = {
+            "K":K,
+            "stress":{},
+            "strain":{}
+        }
         for laminate in self.laminates:
             z1, z2 = self.Z_laminates[laminate]
             max_z = max([abs(z1), abs(z2)])
-            strain_info[laminate] = K*max_z
-        return strain_info
+            strain = K*max_z
+            properties["strain"][laminate] = strain
+            properties["stress"][laminate] = laminate.strain2stress(strain)
+        return properties
 
     def stress2strain(self, stress:np.array, a=None):
         """

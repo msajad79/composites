@@ -136,6 +136,7 @@ class Composite():
         self.Z_laminates = self.calc_Z_laminates()
         self.A = self.calc_A()
         self.D = self.calc_D()
+        self.stiffness_compliance_general = self.calc_stiffness_compliance_general()
 
     def calc_Z_laminates(self):
         Z_laminates = {}
@@ -155,6 +156,21 @@ class Composite():
         self.a = np.linalg.inv(self.A)
         return self.A
     
+    def calc_B(self):
+        """
+        unit d : (KN.m)^-1
+        unit D : (TPa)^-1
+        """
+        self.D = np.zeros((3,3))
+        for laminate in self.laminates[::-1]:
+            z1, z2 = self.Z_laminates[laminate]
+            for i in range(3):
+                for j in range(3):
+                    self.D[i,j] += laminate.Q[i,j]*(np.power(z2, 2.0) - np.power(z1, 2.0)) / 2.0
+            #z1 = z2 
+        self.d = np.linalg.inv(self.D) 
+        return self.D
+
     def calc_D(self):
         """
         unit d : (KN.m)^-1
@@ -170,6 +186,9 @@ class Composite():
         self.d = np.linalg.inv(self.D) 
         return self.D
     
+    def calc_stiffness_compliance_general(self):
+        return np.concatenate((np.concatenate((self.A, self.B), axis=1),np.concatenate((self.A, self.B), axis=1)), axis=0)
+
     def moment_apply(self, M:np.array):
         K = self.d.dot(M)
         properties = {
